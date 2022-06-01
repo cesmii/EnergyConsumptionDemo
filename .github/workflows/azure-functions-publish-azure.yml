@@ -1,0 +1,51 @@
+name: Demo|Azure Function|EnergyConsumption - Deploy to Azure
+on:
+  workflow_dispatch:
+  # Trigger the workflow on push,
+  # but only for the main branch
+  # push:
+  #  branches:
+  #    - master
+
+env:
+  # set this to your application's name
+  AZURE_WEBAPP_NAME: 'energy-stats'    
+  # set this to the path to your solution file, defaults to the repository root (this is the folder in the git repo)
+  SOLUTION_DIRECTORY: './'      
+  # set this to the path to your web app project, defaults to the repository root (this is the folder in the git repo)
+  PROJECT_DIRECTORY: './'      
+  # Solution file to use
+  SOLUTION_FILE: 'CESMII.EnergyConsumption.sln'      
+  # Project file to use
+  PROJECT_NAME: 'CESMII.EnergyConsumption.Functions.csproj'      
+  PUBLISH_FOLDER_RELATIVE: "./publish"
+  PUBLISH_FOLDER: "/publish"
+  # set this to the .NET core version to use
+  NETCORE_VERSION: "3.1.x"
+
+jobs:
+  build:
+    name: Build and Deploy .NET Azure Function
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up dotnet Core ${{ env.NETCORE_VERSION }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.NETCORE_VERSION }}
+      - name: Restore dependencies (${{env.SOLUTION_FILE}})
+        run: dotnet restore ${{env.SOLUTION_FILE}}
+        working-directory: ${{env.SOLUTION_DIRECTORY}}
+      - name: Build (${{env.PROJECT_DIRECTORY}})
+        run: dotnet build ${{env.SOLUTION_FILE}} --configuration Release --no-restore
+        working-directory: ${{env.PROJECT_DIRECTORY}}    
+      - name: Publish (${{env.PROJECT_DIRECTORY}}) TO ${{ env.PUBLISH_FOLDER_RELATIVE }}
+        run: dotnet publish  ${{env.PROJECT_NAME}} --configuration Release --output ${{ env.PUBLISH_FOLDER_RELATIVE }}
+        working-directory: ${{env.PROJECT_DIRECTORY}}
+      - name: 'Deploy to Azure WebApp'
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_ENERGYCONSUMPTION_PUBLISHSETTINGS }}
+          package: ${{ env.PROJECT_DIRECTORY }}${{ env.PUBLISH_FOLDER }}
+
